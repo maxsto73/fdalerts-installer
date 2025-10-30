@@ -3,91 +3,52 @@ set -e
 
 echo "======================================="
 echo " 🚀 FD Alerts Setup Utility"
-echo "    (Installer / Uninstaller / Update)"
 echo "======================================="
-echo ""
 
-ACTION="$1"
+read -p "🔢 Ποια πόρτα θέλεις να χρησιμοποιήσεις; (default 8899): " PORT
+PORT=${PORT:-8899}
 
-case "$ACTION" in
-  install)
-    echo "🔧 Ξεκινά η εγκατάσταση FD Alerts..."
-    echo ""
-    
-    # Ζήτα port από τον χρήστη
-    read -rp "➡️  Δώσε θύρα για το web interface (προεπιλογή 8899): " PORT
-    PORT=${PORT:-8899}
-    echo "📡 Επιλέχθηκε θύρα: $PORT"
-    echo ""
-    
-    # Εγκατάσταση εξαρτήσεων
-    sudo apt-get update -y
-    sudo apt-get install -y python3 python3-venv python3-pip
+INSTALL_DIR="/opt/raspipush_ultimate"
+SERVICE_FILE="/etc/systemd/system/raspipush_ultimate.service"
 
-    # Δημιουργία φακέλου εφαρμογής
-    sudo mkdir -p /opt/raspipush_ultimate
-    cd /opt/raspipush_ultimate
+echo "📦 Δημιουργία φακέλων..."
+sudo mkdir -p $INSTALL_DIR/static/icons
+cd $INSTALL_DIR
 
-    # Δημιουργία virtual environment
-    sudo python3 -m venv venv
-    source venv/bin/activate
+echo "📁 Αντιγραφή αρχείων εφαρμογής..."
+sudo curl -sSL https://raw.githubusercontent.com/maxsto73/fdalerts-installer/main/app.py -o app.py
 
-    # Εγκατάσταση Flask & Requests
-    pip install --upgrade pip
-    pip install flask requests
+echo "📦 Δημιουργία εικονικού περιβάλλοντος..."
+sudo apt-get update -y
+sudo apt-get install -y python3 python3-venv python3-pip
+python3 -m venv venv
+source venv/bin/activate
+pip install --upgrade pip flask requests
 
-    # Δημιουργία βασικού app.py
-    cat <<EOF | sudo tee /opt/raspipush_ultimate/app.py > /dev/null
-from flask import Flask, request, jsonify
-import requests
-
-app = Flask(__name__)
-
-@app.route('/')
-def home():
-    return '<h2>FD Alerts is running on port ${PORT} 🎉</h2>'
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=${PORT})
-EOF
-
-    # Δημιουργία systemd service
-    sudo tee /etc/systemd/system/raspipush_ultimate.service > /dev/null <<SERVICE
+echo "⚙️ Δημιουργία υπηρεσίας systemd..."
+sudo tee $SERVICE_FILE > /dev/null <<EOF
 [Unit]
-Description=RasPi Notifications Ultimate (Flask) on port ${PORT}
+Description=RasPi Notifications Ultimate (Flask) on port $PORT
 After=network.target
 
 [Service]
-ExecStart=/opt/raspipush_ultimate/venv/bin/python /opt/raspipush_ultimate/app.py
-WorkingDirectory=/opt/raspipush_ultimate
+ExecStart=$INSTALL_DIR/venv/bin/python $INSTALL_DIR/app.py
+WorkingDirectory=$INSTALL_DIR
 Restart=always
-User=pi
+Environment="PORT=$PORT"
+Environment="YUBOTO_API_KEY=MDBCNDZFQTktREI1MS00NUMxLUEzRTktOTY3RTQ0NURGNjA1"
+Environment="YUBOTO_SENDER=FDTeam 2012"
+Environment="PUBLIC_BASE_URL=https://app.fdteam2012.gr"
+User=root
 
 [Install]
 WantedBy=multi-user.target
-SERVICE
+EOF
 
-    sudo systemctl daemon-reload
-    sudo systemctl enable raspipush_ultimate.service
-    sudo systemctl restart raspipush_ultimate.service
+echo "🔁 Επανεκκίνηση υπηρεσίας..."
+sudo systemctl daemon-reload
+sudo systemctl enable raspipush_ultimate.service
+sudo systemctl restart raspipush_ultimate.service
 
-    echo ""
-    echo "✅ Εγκατάσταση ολοκληρώθηκε!"
-    echo "🌐 Άνοιξε: http://$(hostname -I | awk '{print $1}'):${PORT}"
-    ;;
-  
-  uninstall)
-    echo "🧹 Απεγκατάσταση FD Alerts..."
-    sudo systemctl stop raspipush_ultimate.service || true
-    sudo systemctl disable raspipush_ultimate.service || true
-    sudo rm -f /etc/systemd/system/raspipush_ultimate.service
-    sudo rm -rf /opt/raspipush_ultimate
-    sudo systemctl daemon-reload
-    echo "✅ Ολοκληρώθηκε η απεγκατάσταση."
-    ;;
-  
-  *)
-    echo "Χρήση: sudo bash setup_fdalerts.txt [install|uninstall]"
-    exit 1
-    ;;
-esac
+echo "✅ Εγκατάσταση ολοκληρώθηκε!"
+echo "➡️ Άνοιξε: http://$(hostname -I | awk '{print $1}'):$PORT"
