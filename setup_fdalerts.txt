@@ -1,130 +1,93 @@
 #!/bin/bash
 set -e
 
-ACTION="$1"
-APP_DIR="/opt/raspipush_ultimate"
-SERVICE_FILE="/etc/systemd/system/raspipush_ultimate.service"
-
-# === Default values ===
-DEFAULT_PORT=8899
-APIKEY="MDBCNDZFQTktREI1MS00NUMxLUEzRTktOTY3RTQ0NURGNjA1"
-SENDER="FDTeam 2012"
-
-clear
-echo "======================================"
+echo "======================================="
 echo " 🚀 FD Alerts Setup Utility"
-echo "    (Auto Install with Port Check)"
-echo "======================================"
+echo "    (Installer / Uninstaller / Update)"
+echo "======================================="
 echo ""
 
-if [[ -z "$ACTION" ]]; then
-    echo "❌ Δεν δόθηκε ενέργεια."
-    echo "👉 Χρήση: sudo bash setup_fdalerts.txt [install|uninstall|update]"
-    exit 1
-fi
+ACTION="$1"
 
-# === Έλεγχος αν μια πόρτα είναι ελεύθερη ===
-is_port_free() {
-    ! sudo lsof -i -P -n | grep -q ":$1 "
-}
-
-# === Απεγκατάσταση ===
-if [[ "$ACTION" == "uninstall" ]]; then
-    echo "🧹 Απεγκατάσταση FD Alerts..."
-    sudo systemctl stop raspipush_ultimate.service 2>/dev/null || true
-    sudo systemctl disable raspipush_ultimate.service 2>/dev/null || true
-    sudo rm -f $SERVICE_FILE
-    sudo rm -rf $APP_DIR
-    sudo systemctl daemon-reload
-    sudo systemctl reset-failed
-    echo "✅ Ολοκληρώθηκε η απεγκατάσταση."
-    exit 0
-fi
-
-# === Ενημέρωση ===
-if [[ "$ACTION" == "update" ]]; then
-    echo "♻️ Ενημέρωση FD Alerts..."
-    sudo systemctl stop raspipush_ultimate.service 2>/dev/null || true
-    sudo curl -sSL https://www.fdteam2012.gr/raspush/app_fdalerts.py -o $APP_DIR/app.py
-    sudo systemctl restart raspipush_ultimate.service
-    echo "✅ Ενημέρωση ολοκληρώθηκε!"
-    IP=$(hostname -I | awk '{print $1}')
-    PORT=$(grep "PORT=" $SERVICE_FILE | sed "s/.*PORT=\([0-9]*\).*/\1/")
-    echo "🌐 Άνοιξε: http://${IP}:${PORT}"
-    exit 0
-fi
-
-# === Εγκατάσταση ===
-if [[ "$ACTION" == "install" ]]; then
-    echo "⚙️ Ξεκινά εγκατάσταση FD Alerts..."
+case "$ACTION" in
+  install)
+    echo "🔧 Ξεκινά η εγκατάσταση FD Alerts..."
     echo ""
-    read -p "👉 Δώσε αριθμό πόρτας (default: ${DEFAULT_PORT}): " PORT
-    if [[ -z "$PORT" ]]; then
-        PORT=$DEFAULT_PORT
-    fi
-
-    # === Έλεγχος πόρτας ===
-    while ! is_port_free "$PORT"; do
-        echo "⚠️ Η πόρτα $PORT χρησιμοποιείται ήδη."
-        ((PORT++))
-        echo "🔄 Δοκιμή επόμενης πόρτας: $PORT"
-    done
-
-    echo "✅ Επιλέχθηκε ελεύθερη πόρτα: $PORT"
+    
+    # Ζήτα port από τον χρήστη
+    read -rp "➡️  Δώσε θύρα για το web interface (προεπιλογή 8899): " PORT
+    PORT=${PORT:-8899}
+    echo "📡 Επιλέχθηκε θύρα: $PORT"
     echo ""
-    echo "✉️ Sender: $SENDER"
-    echo "🔑 API Key: (προρυθμισμένο)"
-    echo ""
-
+    
+    # Εγκατάσταση εξαρτήσεων
     sudo apt-get update -y
-    sudo apt-get install -y python3 python3-venv python3-pip curl lsof
+    sudo apt-get install -y python3 python3-venv python3-pip
 
-    sudo mkdir -p $APP_DIR
-    sudo chown -R $USER:$USER $APP_DIR
+    # Δημιουργία φακέλου εφαρμογής
+    sudo mkdir -p /opt/raspipush_ultimate
+    cd /opt/raspipush_ultimate
 
-    cd $APP_DIR
-    python3 -m venv venv
+    # Δημιουργία virtual environment
+    sudo python3 -m venv venv
     source venv/bin/activate
 
+    # Εγκατάσταση Flask & Requests
     pip install --upgrade pip
     pip install flask requests
 
-    curl -sSL https://www.fdteam2012.gr/raspush/app_fdalerts.py -o $APP_DIR/app.py
+    # Δημιουργία βασικού app.py
+    cat <<EOF | sudo tee /opt/raspipush_ultimate/app.py > /dev/null
+from flask import Flask, request, jsonify
+import requests
 
-    # === Δημιουργία systemd service ===
-    echo "⚙️ Δημιουργία systemd service..."
-    sudo bash -c "cat > $SERVICE_FILE" <<EOF
+app = Flask(__name__)
+
+@app.route('/')
+def home():
+    return '<h2>FD Alerts is running on port ${PORT} 🎉</h2>'
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=${PORT})
+EOF
+
+    # Δημιουργία systemd service
+    sudo tee /etc/systemd/system/raspipush_ultimate.service > /dev/null <<SERVICE
 [Unit]
-Description=RasPi Notifications Ultimate (FD Alerts)
+Description=RasPi Notifications Ultimate (Flask) on port ${PORT}
 After=network.target
 
 [Service]
-ExecStart=$APP_DIR/venv/bin/python $APP_DIR/app.py
-WorkingDirectory=$APP_DIR
+ExecStart=/opt/raspipush_ultimate/venv/bin/python /opt/raspipush_ultimate/app.py
+WorkingDirectory=/opt/raspipush_ultimate
 Restart=always
 User=pi
-Environment='PORT=${PORT}'
-Environment='YUBOTO_API_KEY=${APIKEY}'
-Environment='SENDER_NAME=${SENDER}'
-Environment='FLASK_ENV=production'
 
 [Install]
 WantedBy=multi-user.target
-EOF
+SERVICE
 
     sudo systemctl daemon-reload
     sudo systemctl enable raspipush_ultimate.service
     sudo systemctl restart raspipush_ultimate.service
 
-    IP=$(hostname -I | awk '{print $1}')
     echo ""
-    echo "✅ Εγκατάσταση ολοκληρώθηκε επιτυχώς!"
-    echo "🌐 Web Interface: http://${IP}:${PORT}"
-    echo "📡 Υπηρεσία: raspipush_ultimate.service"
-    echo "======================================"
-    exit 0
-fi
-
-echo "❌ Μη έγκυρη επιλογή. Χρήση: install | uninstall | update"
-exit 1
-
+    echo "✅ Εγκατάσταση ολοκληρώθηκε!"
+    echo "🌐 Άνοιξε: http://$(hostname -I | awk '{print $1}'):${PORT}"
+    ;;
+  
+  uninstall)
+    echo "🧹 Απεγκατάσταση FD Alerts..."
+    sudo systemctl stop raspipush_ultimate.service || true
+    sudo systemctl disable raspipush_ultimate.service || true
+    sudo rm -f /etc/systemd/system/raspipush_ultimate.service
+    sudo rm -rf /opt/raspipush_ultimate
+    sudo systemctl daemon-reload
+    echo "✅ Ολοκληρώθηκε η απεγκατάσταση."
+    ;;
+  
+  *)
+    echo "Χρήση: sudo bash setup_fdalerts.txt [install|uninstall]"
+    exit 1
+    ;;
+esac
