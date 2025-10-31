@@ -1,0 +1,4 @@
+# Force Unix (LF) endings for scripts and text files
+*.sh text eol=lf
+*.txt text eol=lf
+*.py text eol=lf
