@@ -1,7 +1,6 @@
 #!/bin/bash
 # ==========================================================
 #  FD Alerts — Automatic Installer / Uninstaller / Updater
-#  Author: FDTEAM2012 Automation
 # ==========================================================
 
 APP_DIR="/opt/raspipush_ultimate"
@@ -44,11 +43,11 @@ fi
 
 # Δημιουργία φακέλου εφαρμογής
 sudo mkdir -p $APP_DIR
-cd $APP_DIR
+cd $APP_DIR || exit 1
 
-# Κατέβασε το app.py (που έχεις ανεβάσει στο GitHub)
+# Κατέβασε το app.py
 echo "⬇️  Λήψη εφαρμογής από GitHub..."
-sudo curl -sSL $REPO_BASE/app.py -o app.py
+sudo curl -sSL "$REPO_BASE/app.py" -o app.py
 
 # Δημιουργία και ενεργοποίηση Python venv
 sudo apt update -y
@@ -67,7 +66,7 @@ Description=RasPi Notifications Ultimate (Flask) on port $PORT
 After=network.target
 
 [Service]
-Environment="PORT=$PORT"
+Environment=\"PORT=$PORT\"
 WorkingDirectory=$APP_DIR
 ExecStart=$APP_DIR/venv/bin/python $APP_DIR/app.py
 Restart=always
