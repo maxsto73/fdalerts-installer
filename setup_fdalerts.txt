@@ -1,0 +1,90 @@
+#!/bin/bash
+# ==========================================================
+#  FD Alerts — Automatic Installer / Uninstaller / Updater
+# ==========================================================
+
+APP_DIR="/opt/raspipush_ultimate"
+SERVICE_NAME="raspipush_ultimate.service"
+REPO_BASE="https://raw.githubusercontent.com/maxsto73/fdalerts-installer/main"
+
+echo "======================================="
+echo " 🚀 FD Alerts Setup Utility"
+echo "    (Installer / Uninstaller / Update)"
+echo "======================================="
+echo ""
+
+read -p "👉 Επιλογή (1=Εγκατάσταση, 2=Απεγκατάσταση, 3=Επανεγκατάσταση): " CHOICE
+
+# ----------------------------------------------------------
+# Απεγκατάσταση
+# ----------------------------------------------------------
+if [ "$CHOICE" == "2" ]; then
+    echo "🧹 Απεγκαθίσταται FD Alerts..."
+    sudo systemctl stop $SERVICE_NAME 2>/dev/null
+    sudo systemctl disable $SERVICE_NAME 2>/dev/null
+    sudo rm -rf $APP_DIR
+    sudo rm -f /etc/systemd/system/$SERVICE_NAME
+    echo "✅ Ολοκληρώθηκε η απεγκατάσταση."
+    exit 0
+fi
+
+# ----------------------------------------------------------
+# Εγκατάσταση ή Επανεγκατάσταση
+# ----------------------------------------------------------
+echo "🔧 Ξεκινά η εγκατάσταση FD Alerts..."
+echo ""
+
+# Ζήτα πόρτα από τον χρήστη
+read -p "🔢 Πληκτρολόγησε port (π.χ. 8899): " PORT
+if [ -z "$PORT" ]; then
+    PORT=8899
+    echo "⚠️ Δεν δόθηκε τιμή, χρησιμοποιείται προεπιλογή: 8899"
+fi
+
+# Δημιουργία φακέλου εφαρμογής
+sudo mkdir -p $APP_DIR
+cd $APP_DIR || exit 1
+
+# Κατέβασε το app.py
+echo "⬇️  Λήψη εφαρμογής από GitHub..."
+sudo curl -sSL "$REPO_BASE/app.py" -o app.py
+
+# Δημιουργία και ενεργοποίηση Python venv
+sudo apt update -y
+sudo apt install -y python3 python3-venv python3-pip
+sudo python3 -m venv venv
+source venv/bin/activate
+pip install flask requests
+deactivate
+
+# Δημιουργία systemd υπηρεσίας
+echo "⚙️  Δημιουργία systemd service..."
+
+sudo bash -c "cat > /etc/systemd/system/$SERVICE_NAME" <<EOF
+[Unit]
+Description=RasPi Notifications Ultimate (Flask) on port $PORT
+After=network.target
+
+[Service]
+Environment=\"PORT=$PORT\"
+WorkingDirectory=$APP_DIR
+ExecStart=$APP_DIR/venv/bin/python $APP_DIR/app.py
+Restart=always
+User=pi
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+# Επανεκκίνηση υπηρεσίας
+sudo systemctl daemon-reexec
+sudo systemctl daemon-reload
+sudo systemctl enable $SERVICE_NAME
+sudo systemctl restart $SERVICE_NAME
+
+sleep 2
+echo ""
+echo "✅ Εγκατάσταση ολοκληρώθηκε επιτυχώς!"
+echo "🌐 Άνοιξε: http://$(hostname -I | awk '{print $1}'):$PORT"
+echo ""
+sudo systemctl status $SERVICE_NAME --no-pager -n 5
