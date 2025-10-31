@@ -1,54 +1,91 @@
 #!/bin/bash
-set -e
+# ==========================================================
+#  FD Alerts — Automatic Installer / Uninstaller / Updater
+#  Author: FDTEAM2012 Automation
+# ==========================================================
+
+APP_DIR="/opt/raspipush_ultimate"
+SERVICE_NAME="raspipush_ultimate.service"
+REPO_BASE="https://raw.githubusercontent.com/maxsto73/fdalerts-installer/main"
 
 echo "======================================="
 echo " 🚀 FD Alerts Setup Utility"
+echo "    (Installer / Uninstaller / Update)"
 echo "======================================="
+echo ""
 
-read -p "🔢 Ποια πόρτα θέλεις να χρησιμοποιήσεις; (default 8899): " PORT
-PORT=${PORT:-8899}
+read -p "👉 Επιλογή (1=Εγκατάσταση, 2=Απεγκατάσταση, 3=Επανεγκατάσταση): " CHOICE
 
-INSTALL_DIR="/opt/raspipush_ultimate"
-SERVICE_FILE="/etc/systemd/system/raspipush_ultimate.service"
+# ----------------------------------------------------------
+# Απεγκατάσταση
+# ----------------------------------------------------------
+if [ "$CHOICE" == "2" ]; then
+    echo "🧹 Απεγκαθίσταται FD Alerts..."
+    sudo systemctl stop $SERVICE_NAME 2>/dev/null
+    sudo systemctl disable $SERVICE_NAME 2>/dev/null
+    sudo rm -rf $APP_DIR
+    sudo rm -f /etc/systemd/system/$SERVICE_NAME
+    echo "✅ Ολοκληρώθηκε η απεγκατάσταση."
+    exit 0
+fi
 
-echo "📦 Δημιουργία φακέλων..."
-sudo mkdir -p $INSTALL_DIR/static/icons
-cd $INSTALL_DIR
+# ----------------------------------------------------------
+# Εγκατάσταση ή Επανεγκατάσταση
+# ----------------------------------------------------------
+echo "🔧 Ξεκινά η εγκατάσταση FD Alerts..."
+echo ""
 
-echo "📁 Αντιγραφή αρχείων εφαρμογής..."
-sudo curl -sSL https://raw.githubusercontent.com/maxsto73/fdalerts-installer/main/app.py -o app.py
+# Ζήτα πόρτα από τον χρήστη
+read -p "🔢 Πληκτρολόγησε port (π.χ. 8899): " PORT
+if [ -z "$PORT" ]; then
+    PORT=8899
+    echo "⚠️ Δεν δόθηκε τιμή, χρησιμοποιείται προεπιλογή: 8899"
+fi
 
-echo "📦 Δημιουργία εικονικού περιβάλλοντος..."
-sudo apt-get update -y
-sudo apt-get install -y python3 python3-venv python3-pip
-python3 -m venv venv
+# Δημιουργία φακέλου εφαρμογής
+sudo mkdir -p $APP_DIR
+cd $APP_DIR
+
+# Κατέβασε το app.py (που έχεις ανεβάσει στο GitHub)
+echo "⬇️  Λήψη εφαρμογής από GitHub..."
+sudo curl -sSL $REPO_BASE/app.py -o app.py
+
+# Δημιουργία και ενεργοποίηση Python venv
+sudo apt update -y
+sudo apt install -y python3 python3-venv python3-pip
+sudo python3 -m venv venv
 source venv/bin/activate
-pip install --upgrade pip flask requests
+pip install flask requests
+deactivate
 
-echo "⚙️ Δημιουργία υπηρεσίας systemd..."
-sudo tee $SERVICE_FILE > /dev/null <<EOF
+# Δημιουργία systemd υπηρεσίας
+echo "⚙️  Δημιουργία systemd service..."
+
+sudo bash -c "cat > /etc/systemd/system/$SERVICE_NAME" <<EOF
 [Unit]
 Description=RasPi Notifications Ultimate (Flask) on port $PORT
 After=network.target
 
 [Service]
-ExecStart=$INSTALL_DIR/venv/bin/python $INSTALL_DIR/app.py
-WorkingDirectory=$INSTALL_DIR
-Restart=always
 Environment="PORT=$PORT"
-Environment="YUBOTO_API_KEY=MDBCNDZFQTktREI1MS00NUMxLUEzRTktOTY3RTQ0NURGNjA1"
-Environment="YUBOTO_SENDER=FDTeam 2012"
-Environment="PUBLIC_BASE_URL=https://app.fdteam2012.gr"
-User=root
+WorkingDirectory=$APP_DIR
+ExecStart=$APP_DIR/venv/bin/python $APP_DIR/app.py
+Restart=always
+User=pi
 
 [Install]
 WantedBy=multi-user.target
 EOF
 
-echo "🔁 Επανεκκίνηση υπηρεσίας..."
+# Επανεκκίνηση υπηρεσίας
+sudo systemctl daemon-reexec
 sudo systemctl daemon-reload
-sudo systemctl enable raspipush_ultimate.service
-sudo systemctl restart raspipush_ultimate.service
+sudo systemctl enable $SERVICE_NAME
+sudo systemctl restart $SERVICE_NAME
 
-echo "✅ Εγκατάσταση ολοκληρώθηκε!"
-echo "➡️ Άνοιξε: http://$(hostname -I | awk '{print $1}'):$PORT"
+sleep 2
+echo ""
+echo "✅ Εγκατάσταση ολοκληρώθηκε επιτυχώς!"
+echo "🌐 Άνοιξε: http://$(hostname -I | awk '{print $1}'):$PORT"
+echo ""
+sudo systemctl status $SERVICE_NAME --no-pager -n 5
