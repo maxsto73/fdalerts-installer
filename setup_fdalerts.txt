@@ -1,7 +1,5 @@
 #!/bin/bash
-# ======================================
-# 🚀 FD Alerts Setup Utility
-# ======================================
+set -e
 
 APP_DIR="/opt/fdalerts"
 SERVICE_NAME="fdalerts.service"
@@ -14,37 +12,63 @@ echo "    (Installer / Uninstaller / Update)"
 echo "======================================="
 echo ""
 
-read -p "👉 Επιλογή (1=Εγκατάσταση, 2=Απεγκατάσταση, 3=Επανεγκατάσταση): " CHOICE
-
-case $CHOICE in
+echo "👉 Επιλογή (1=Εγκατάσταση, 2=Απεγκατάσταση, 3=Επανεγκατάσταση): "
+read -r CHOICE
 
 # ----------------------------------------------------------
-# 1️⃣ ΕΓΚΑΤΑΣΤΑΣΗ
+# Απεγκατάσταση
 # ----------------------------------------------------------
-1)
+if [ "$CHOICE" = "2" ]; then
+    echo "🧹 Απεγκαθίσταται FD Alerts..."
+    sudo systemctl stop $SERVICE_NAME 2>/dev/null || true
+    sudo systemctl disable $SERVICE_NAME 2>/dev/null || true
+    sudo rm -f /etc/systemd/system/$SERVICE_NAME
+    sudo rm -rf $APP_DIR
+    sudo systemctl daemon-reload
+    echo "✅ Ολοκληρώθηκε η απεγκατάσταση."
+    exit 0
+fi
+
+# ----------------------------------------------------------
+# Επανεγκατάσταση
+# ----------------------------------------------------------
+if [ "$CHOICE" = "3" ]; then
+    echo "🔁 Επανεγκατάσταση..."
+    sudo systemctl stop $SERVICE_NAME 2>/dev/null || true
+    sudo rm -rf $APP_DIR
+    sudo systemctl disable $SERVICE_NAME 2>/dev/null || true
+    sudo rm -f /etc/systemd/system/$SERVICE_NAME
+    sudo systemctl daemon-reload
+    CHOICE="1"
+fi
+
+# ----------------------------------------------------------
+# Εγκατάσταση
+# ----------------------------------------------------------
+if [ "$CHOICE" = "1" ]; then
     echo ""
     echo "🔧 Ξεκινά η εγκατάσταση FD Alerts..."
     echo ""
-    
     read -p "🔢 Πληκτρολόγησε port (π.χ. 8899): " PORT
     if [ -z "$PORT" ]; then
         PORT=8899
         echo "⚠️ Δεν δόθηκε τιμή, χρησιμοποιείται προεπιλογή: 8899"
     fi
 
-    sudo mkdir -p "$APP_DIR"
-    cd "$APP_DIR" || { echo "❌ Σφάλμα: δεν μπόρεσε να δημιουργηθεί ο φάκελος εφαρμογής."; exit 1; }
-
     echo "⬇️  Λήψη εφαρμογής από GitHub..."
-    sudo curl -fsSL "$REPO_BASE/app.py" -o app.py || { echo "❌ Αποτυχία λήψης app.py"; exit 1; }
+    sudo mkdir -p "$APP_DIR"
+    sudo chown -R pi:pi "$APP_DIR"
+    cd "$APP_DIR" || exit 1
+
+    curl -sSL "$REPO_BASE/app.py" -o app.py
 
     echo "🐍 Δημιουργία Python virtual environment..."
     sudo apt update -y && sudo apt install -y python3 python3-venv python3-pip
     python3 -m venv venv
     source venv/bin/activate
-    pip install flask requests
+    pip install --break-system-packages flask requests
     deactivate
-    sudo chown -R pi:pi $APP_DIR
+
     echo "⚙️  Δημιουργία systemd service..."
     sudo bash -c "cat > /etc/systemd/system/$SERVICE_NAME" <<EOF
 [Unit]
@@ -64,53 +88,22 @@ EOF
 
     sudo systemctl daemon-reexec
     sudo systemctl daemon-reload
-    sudo systemctl enable "$SERVICE_NAME"
-    sudo systemctl restart "$SERVICE_NAME"
+    sudo systemctl enable $SERVICE_NAME
+    sudo systemctl restart $SERVICE_NAME
 
     sleep 2
     echo ""
     echo "✅ Εγκατάσταση ολοκληρώθηκε επιτυχώς!"
     echo "🌐 Άνοιξε: http://$(hostname -I | awk '{print $1}'):$PORT"
     echo ""
-    sudo systemctl status "$SERVICE_NAME" --no-pager -n 5
-    ;;
 
-# ----------------------------------------------------------
-# 2️⃣ ΑΠΕΓΚΑΤΑΣΤΑΣΗ
-# ----------------------------------------------------------
-2)
-    echo ""
-    echo "🧹 Απεγκαθίσταται FD Alerts..."
-
-    sudo systemctl stop "$SERVICE_NAME" 2>/dev/null
-    sudo systemctl disable "$SERVICE_NAME" 2>/dev/null
-    sudo rm -f "/etc/systemd/system/$SERVICE_NAME"
-    sudo systemctl daemon-reexec
-    sudo systemctl daemon-reload
-
-    if [ -d "$APP_DIR" ]; then
-        sudo rm -rf "$APP_DIR"
+    # Αν το service απέτυχε, δείξε logs
+    if ! systemctl is-active --quiet $SERVICE_NAME; then
+        echo "⚠️ Το service δεν ξεκίνησε σωστά. Δες τα τελευταία logs:"
+        sudo journalctl -u $SERVICE_NAME -n 20 --no-pager
     fi
+    exit 0
+fi
 
-    echo "✅ Ολοκληρώθηκε η απεγκατάσταση."
-    ;;
-
-# ----------------------------------------------------------
-# 3️⃣ ΕΠΑΝΕΓΚΑΤΑΣΤΑΣΗ
-# ----------------------------------------------------------
-3)
-    echo ""
-    echo "🔁 Επανεγκαθίσταται FD Alerts..."
-    sudo systemctl stop "$SERVICE_NAME" 2>/dev/null
-    sudo rm -rf "$APP_DIR"
-    sudo rm -f "/etc/systemd/system/$SERVICE_NAME"
-    sudo systemctl daemon-reexec
-    sudo systemctl daemon-reload
-    bash <(curl -fsSL "$REPO_BASE/setup_fdalerts.txt")
-    ;;
-
-*)
-    echo ""
-    echo "❌ Μη έγκυρη επιλογή. Έξοδος."
-    ;;
-esac
+echo "❌ Μη έγκυρη επιλογή. Έξοδος."
+exit 1
