@@ -1,0 +1,164 @@
+[
+  {
+    "ts": "2025-11-07T20:11:28",
+    "recipient": "6945414565",
+    "name": "Μάκης Χριστόπουλος",
+    "message": "⚽ Flying Dads Team υπενθύμιση!\nΠαίζουμε μπαλίτσα στο δαβουρλη 7χ7 την 2025-11-10 ώρα 22:12",
+    "landing_id": "c01e5d0f",
+    "landing_url": "https://alert.fdteam2012.gr/r?id=c01e5d0f",
+    "ok": true,
+    "provider_info": {
+      "status": 200,
+      "data": {
+        "ErrorCode": 0,
+        "ErrorMessage": null,
+        "Message": [
+          {
+            "id": "591EE905-D410-4E87-B540-8E1C5990EDEC",
+            "channel": "omni",
+            "phonenumber": "306945414565",
+            "email": null,
+            "status": "submitted",
+            "errorCode": 0,
+            "urls": []
+          }
+        ]
+      }
+    }
+  },
+  {
+    "ts": "2025-11-07T20:09:37",
+    "recipient": "6945414565",
+    "name": "Μάκης",
+    "message": "⚽ Flying Dads Team υπενθύμιση!\nΠαίζουμε μπαλίτσα στο davourli την 2025-11-07 ώρα 12:12",
+    "landing_id": "cd1dad26",
+    "landing_url": "https://alert.fdteam2012.gr/r?id=cd1dad26",
+    "ok": true,
+    "provider_info": {
+      "status": 200,
+      "data": {
+        "ErrorCode": 0,
+        "ErrorMessage": null,
+        "Message": [
+          {
+            "id": "2EF7F007-7D85-475F-9E94-D09646E73686",
+            "channel": "omni",
+            "phonenumber": "306945414565",
+            "email": null,
+            "status": "submitted",
+            "errorCode": 0,
+            "urls": []
+          }
+        ]
+      }
+    }
+  },
+  {
+    "ts": "2025-11-07T18:25:46",
+    "recipients": [
+      "6945414565"
+    ],
+    "message": "τεστ ...παιζουμε σημερα",
+    "with_link": "https://alert.fdteam2012.gr/r?id=ee660756",
+    "ok": true,
+    "provider_info": {
+      "status": 200,
+      "data": {
+        "ErrorCode": 0,
+        "ErrorMessage": null,
+        "Message": [
+          {
+            "id": "0CCCE509-871B-405C-A6B3-E0BACEBA6DFD",
+            "channel": "omni",
+            "phonenumber": "306945414565",
+            "email": null,
+            "status": "submitted",
+            "errorCode": 0,
+            "urls": []
+          }
+        ]
+      }
+    }
+  },
+  {
+    "ts": "2025-11-07T18:21:57",
+    "recipients": [
+      "6945414565"
+    ],
+    "message": "⚽ Flying Dads Team υπενθύμιση!\nΠαίζουμε μπαλίτσα στο δαβουρλη την 2025-11-10 ώρα 21:22",
+    "with_link": "https://alert.fdteam2012.gr/r?id=c0430323",
+    "ok": true,
+    "provider_info": {
+      "status": 200,
+      "data": {
+        "ErrorCode": 0,
+        "ErrorMessage": null,
+        "Message": [
+          {
+            "id": "0471C214-130F-4C89-B49D-C653FF711C8B",
+            "channel": "omni",
+            "phonenumber": "306945414565",
+            "email": null,
+            "status": "submitted",
+            "errorCode": 0,
+            "urls": []
+          }
+        ]
+      }
+    }
+  },
+  {
+    "ts": "2025-11-07T12:05:35",
+    "recipients": [
+      "6945414565"
+    ],
+    "message": "⚽ Flying Dads Team υπενθύμιση!\nΠαίζουμε μπαλίτσα στο test την 2025-11-07 ώρα 17:05",
+    "with_link": "https://alert.fdteam2012.gr/r?id=1e79ea34",
+    "ok": true,
+    "provider_info": {
+      "status": 200,
+      "data": {
+        "ErrorCode": 0,
+        "ErrorMessage": null,
+        "Message": [
+          {
+            "id": "47429A71-E81B-41F5-8D99-79FC4CC047C3",
+            "channel": "omni",
+            "phonenumber": "306945414565",
+            "email": null,
+            "status": "submitted",
+            "errorCode": 0,
+            "urls": []
+          }
+        ]
+      }
+    }
+  },
+  {
+    "ts": "2025-11-06T17:22:00",
+    "recipients": [
+      "6945414565"
+    ],
+    "message": "⚽ Flying Dads Team υπενθύμιση!\nΠαίζουμε μπαλίτσα στο Δαβουρλή την 2025-11-10 ώρα 20:45",
+    "with_link": "https://alert.fdteam2012.gr/r?id=d2e9974a",
+    "ok": true,
+    "provider_info": {
+      "status": 200,
+      "data": {
+        "ErrorCode": 0,
+        "ErrorMessage": null,
+        "Message": [
+          {
+            "id": "A2134361-0D35-4365-A103-90E1E177786F",
+            "channel": "omni",
+            "phonenumber": "306945414565",
+            "email": null,
+            "status": "submitted",
+            "errorCode": 0,
+            "urls": []
+          }
+        ]
+      }
+    }
+  }
+]
